@@ -169,22 +169,20 @@ calculate_available_memory() {
 recommend_models() {
     echo -e "${GREEN}Recommended Models for Coding:${NC}\n"
     
-    # Model configurations: name, min_gb, recommended_gb, context, description
-    declare -a models=(
-        "qwen2.5-coder:32b-instruct-q4_K_M,20,24,32768,Excellent 32B coding model with Q4 quantization"
-        "qwen2.5-coder:14b-instruct-q5_K_M,12,16,32768,Great 14B coding model with Q5 quantization"
-        "qwen2.5-coder:7b-instruct-q8_0,8,10,32768,Solid 7B model with high quality Q8 quantization"
-        "qwen2.5-coder:7b-instruct-q5_K_M,5,6,32768,Efficient 7B model with Q5 quantization"
-        "deepseek-coder-v2:16b-lite-instruct-q4_K_M,10,12,16384,DeepSeek 16B lightweight version"
-        "codellama:34b-instruct-q4_K_M,20,24,16384,Meta's 34B CodeLlama with Q4 quantization"
-        "codellama:13b-instruct-q5_K_M,10,12,16384,Meta's 13B CodeLlama with Q5 quantization"
-        "codellama:7b-instruct-q8_0,8,10,16384,Meta's 7B CodeLlama with high quality"
-        "starcoder2:15b-q4_K_M,10,12,16384,StarCoder2 15B for code completion"
-        "starcoder2:7b-q5_K_M,5,6,16384,StarCoder2 7B efficient version"
-        "codegemma:7b-instruct-q5_K_M,5,6,8192,Google's CodeGemma 7B"
-        "granite-code:8b-instruct-q4_K_M,5,6,8192,IBM Granite Code 8B"
-        "stable-code:3b-q8_0,3,4,16384,Stability AI's compact 3B model"
-    )
+    # Load models from CSV file
+    declare -a models=()
+    if [ -f "models.csv" ]; then
+        # Read CSV file, skip header line
+        while IFS=',' read -r name min_gb rec_gb context desc; do
+            # Skip header line
+            if [[ "$name" != "Name" ]]; then
+                models+=("$name,$min_gb,$rec_gb,$context,$desc")
+            fi
+        done < "models.csv"
+    else
+        echo -e "${RED}Error: models.csv file not found!${NC}"
+        return 1
+    fi
     
     RECOMMENDED_COUNT=0
     POSSIBLE_COUNT=0
@@ -380,22 +378,20 @@ install_recommended_model() {
     mapfile -t installed_models < <(get_installed_models)
     installed_recommended=()
     
-    # Model configurations: name, min_gb, recommended_gb, context, description
-    declare -a recommended_models=(
-        "qwen2.5-coder:32b-instruct-q4_K_M,20,24,32768,Excellent 32B coding model with Q4 quantization"
-        "qwen2.5-coder:14b-instruct-q5_K_M,12,16,32768,Great 14B coding model with Q5 quantization"
-        "qwen2.5-coder:7b-instruct-q8_0,8,10,32768,Solid 7B model with high quality Q8 quantization"
-        "qwen2.5-coder:7b-instruct-q5_K_M,5,6,32768,Efficient 7B model with Q5 quantization"
-        "deepseek-coder-v2:16b-lite-instruct-q4_K_M,10,12,16384,DeepSeek 16B lightweight version"
-        "codellama:34b-instruct-q4_K_M,20,24,16384,Meta's 34B CodeLlama with Q4 quantization"
-        "codellama:13b-instruct-q5_K_M,10,12,16384,Meta's 13B CodeLlama with Q5 quantization"
-        "codellama:7b-instruct-q8_0,8,10,16384,Meta's 7B CodeLlama with high quality"
-        "starcoder2:15b-q4_K_M,10,12,16384,StarCoder2 15B for code completion"
-        "starcoder2:7b-q5_K_M,5,6,16384,StarCoder2 7B efficient version"
-        "codegemma:7b-instruct-q5_K_M,5,6,8192,Google's CodeGemma 7B"
-        "granite-code:8b-instruct-q4_K_M,5,6,8192,IBM Granite Code 8B"
-        "stable-code:3b-q8_0,3,4,16384,Stability AI's compact 3B model"
-    )
+    # Load models from CSV file
+    declare -a recommended_models=()
+    if [ -f "models.csv" ]; then
+        # Read CSV file, skip header line
+        while IFS=',' read -r name min_gb rec_gb context desc; do
+            # Skip header line
+            if [[ "$name" != "Name" ]]; then
+                recommended_models+=("$name,$min_gb,$rec_gb,$context,$desc")
+            fi
+        done < "models.csv"
+    else
+        echo -e "${RED}Error: models.csv file not found!${NC}"
+        return 1
+    fi
     
     declare -a possible_models=()
     

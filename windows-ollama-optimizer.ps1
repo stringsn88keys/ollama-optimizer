@@ -180,22 +180,7 @@ function Get-ModelRecommendations {
     Write-ColorOutput "Recommended Models for Coding:" "Green"
     Write-Host ""
     
-    # Model configurations: name, min_gb, recommended_gb, context, description
-    $models = @(
-        @{Name = "qwen2.5-coder:32b-instruct-q4_K_M"; MinGB = 20; RecGB = 24; Context = 32768; Desc = "Excellent 32B coding model with Q4 quantization" },
-        @{Name = "qwen2.5-coder:14b-instruct-q5_K_M"; MinGB = 12; RecGB = 16; Context = 32768; Desc = "Great 14B coding model with Q5 quantization" },
-        @{Name = "qwen2.5-coder:7b-instruct-q8_0"; MinGB = 8; RecGB = 10; Context = 32768; Desc = "Solid 7B model with high quality Q8 quantization" },
-        @{Name = "qwen2.5-coder:7b-instruct-q5_K_M"; MinGB = 5; RecGB = 6; Context = 32768; Desc = "Efficient 7B model with Q5 quantization" },
-        @{Name = "deepseek-coder-v2:16b-lite-instruct-q4_K_M"; MinGB = 10; RecGB = 12; Context = 16384; Desc = "DeepSeek 16B lightweight version" },
-        @{Name = "codellama:34b-instruct-q4_K_M"; MinGB = 20; RecGB = 24; Context = 16384; Desc = "Meta's 34B CodeLlama with Q4 quantization" },
-        @{Name = "codellama:13b-instruct-q5_K_M"; MinGB = 10; RecGB = 12; Context = 16384; Desc = "Meta's 13B CodeLlama with Q5 quantization" },
-        @{Name = "codellama:7b-instruct-q8_0"; MinGB = 8; RecGB = 10; Context = 16384; Desc = "Meta's 7B CodeLlama with high quality" },
-        @{Name = "starcoder2:15b-q4_K_M"; MinGB = 10; RecGB = 12; Context = 16384; Desc = "StarCoder2 15B for code completion" },
-        @{Name = "starcoder2:7b-q5_K_M"; MinGB = 5; RecGB = 6; Context = 16384; Desc = "StarCoder2 7B efficient version" },
-        @{Name = "codegemma:7b-instruct-q5_K_M"; MinGB = 5; RecGB = 6; Context = 8192; Desc = "Google's CodeGemma 7B" },
-        @{Name = "granite-code:8b-instruct-q4_K_M"; MinGB = 5; RecGB = 6; Context = 8192; Desc = "IBM Granite Code 8B" },
-        @{Name = "stable-code:3b-q8_0"; MinGB = 3; RecGB = 4; Context = 16384; Desc = "Stability AI's compact 3B model" }
-    )
+    $models = Import-Csv -Path ".\models.csv"
     
     # Initialize script-level arrays to store models
     $script:recommendedModels = @()
@@ -205,19 +190,19 @@ function Get-ModelRecommendations {
     
     Write-ColorOutput "Optimal Choices:" "Cyan"
     foreach ($model in $models) {
-        if ($script:maxModelSizeGB -ge $model.RecGB) {
+        if ($script:maxModelSizeGB -ge [int]$model.RecGB) {
             Write-ColorOutput "  [OK] $($model.Name)" "Green"
             Write-Host "     Memory: $($model.RecGB)GB | Context: $($model.Context) tokens"
             Write-Host "     $($model.Desc)"
-            
+        
             # Suggest optimal context window based on available RAM
-            if ($script:availableRamGB -ge ($model.RecGB + 4)) {
+            if ($script:availableRamGB -ge ([int]$model.RecGB + 4)) {
                 Write-ColorOutput "     Recommended settings:" "Yellow"
                 Write-Host "     ollama run $($model.Name)"
                 Write-Host "     Can use full $($model.Context) token context"
             }
             else {
-                $adjustedContext = [math]::Floor($model.Context / 2)
+                $adjustedContext = [math]::Floor([int]$model.Context / 2)
                 Write-ColorOutput "     Recommended settings:" "Yellow"
                 Write-Host "     ollama run $($model.Name)"
                 Write-Host "     Consider reducing context to $adjustedContext tokens if OOM"
@@ -235,15 +220,15 @@ function Get-ModelRecommendations {
     
     Write-ColorOutput "Possible with Reduced Performance:" "Cyan"
     foreach ($model in $models) {
-        if (($script:maxModelSizeGB -ge $model.MinGB) -and ($script:maxModelSizeGB -lt $model.RecGB)) {
+        if (($script:maxModelSizeGB -ge [int]$model.MinGB) -and ($script:maxModelSizeGB -lt [int]$model.RecGB)) {
             Write-ColorOutput "  [WARNING] $($model.Name)" "Yellow"
             Write-Host "     Minimum: $($model.MinGB)GB | Recommended: $($model.RecGB)GB"
             Write-Host "     $($model.Desc)"
-            
+        
             # Calculate reduced context window
-            $reductionFactor = $script:maxModelSizeGB / $model.RecGB
-            $adjustedContext = [math]::Floor($model.Context * $reductionFactor)
-            
+            $reductionFactor = [int]$script:maxModelSizeGB / [int]$model.RecGB
+            $adjustedContext = [math]::Floor([int]$model.Context * $reductionFactor)
+        
             Write-ColorOutput "     Adjusted settings:" "Yellow"
             Write-Host "     Reduce context to ~$adjustedContext tokens"
             Write-Host "     May experience slower performance"
