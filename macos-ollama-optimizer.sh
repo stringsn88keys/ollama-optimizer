@@ -375,7 +375,10 @@ install_recommended_model() {
     echo -e "${BLUE}Model Installation:${NC}"
     
     # Check for already installed models
-    mapfile -t installed_models < <(get_installed_models)
+    installed_models=()
+    while IFS= read -r line; do
+        installed_models+=("$line")
+    done < <(get_installed_models)
     installed_recommended=()
     
     # Load models from CSV file
