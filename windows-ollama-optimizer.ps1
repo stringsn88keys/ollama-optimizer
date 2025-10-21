@@ -190,13 +190,13 @@ function Get-ModelRecommendations {
     
     Write-ColorOutput "Optimal Choices:" "Cyan"
     foreach ($model in $models) {
-        if ([int]$model.RecGB -ge [int]$script:maxModelSizeGB) {
+        if ($script:maxModelSizeGB -ge [int]$model.RecGB) {
             Write-ColorOutput "  [OK] $($model.Name)" "Green"
             Write-Host "     Memory: $($model.RecGB)GB | Context: $($model.Context) tokens"
             Write-Host "     $($model.Desc)"
         
             # Suggest optimal context window based on available RAM
-            if ([int]$script:availableRamGB -ge ([int]$model.RecGB + 4)) {
+            if ($script:availableRamGB -ge ([int]$model.RecGB + 4)) {
                 Write-ColorOutput "     Recommended settings:" "Yellow"
                 Write-Host "     ollama run $($model.Name)"
                 Write-Host "     Can use full $($model.Context) token context"
@@ -220,7 +220,7 @@ function Get-ModelRecommendations {
     
     Write-ColorOutput "Possible with Reduced Performance:" "Cyan"
     foreach ($model in $models) {
-        if (([int]$script:maxModelSizeGB -ge [int]$model.MinGB) -and ([int]$script:maxModelSizeGB -lt [int]$model.RecGB)) {
+        if (($script:maxModelSizeGB -ge [int]$model.MinGB) -and ($script:maxModelSizeGB -lt [int]$model.RecGB)) {
             Write-ColorOutput "  [WARNING] $($model.Name)" "Yellow"
             Write-Host "     Minimum: $($model.MinGB)GB | Recommended: $($model.RecGB)GB"
             Write-Host "     $($model.Desc)"
