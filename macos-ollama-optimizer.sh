@@ -171,7 +171,8 @@ recommend_models() {
     
     # Load models from CSV file
     declare -a models=()
-    if [ -f "models.csv" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ -f "$SCRIPT_DIR/models.csv" ]; then
         # Read CSV file, skip header line
         while IFS=',' read -r name min_gb rec_gb context desc; do
             # Skip header line
