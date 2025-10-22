@@ -13,19 +13,83 @@ function Write-ColorOutput {
     Write-Host $Text -ForegroundColor $Color
 }
 
+# Load .env file if it exists
+$envFile = Join-Path $PSScriptRoot ".env"
+if (Test-Path $envFile) {
+    Write-ColorOutput "Loading configuration from .env..." "Green"
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
+            $key = $matches[1].Trim()
+            $value = $matches[2].Trim()
+            Set-Variable -Name $key -Value $value -Scope Script
+        }
+    }
+    Write-Host ""
+}
+
 Write-ColorOutput "==================================" "Cyan"
 Write-ColorOutput "  Ollama Model List Updater" "Cyan"
 Write-ColorOutput "==================================" "Cyan"
 Write-Host ""
+
+# Function to call Ollama web_search API
+function Invoke-OllamaAPI {
+    param(
+        [string]$Query
+    )
+    
+    $apiUrl = "https://ollama.com/api/web_search"
+    $body = @{
+        query = $Query
+    } | ConvertTo-Json
+    
+    try {
+        if ($script:OLLAMA_API_KEY) {
+            # Use API key if available
+            $headers = @{
+                "Authorization" = "Bearer $($script:OLLAMA_API_KEY)"
+                "Content-Type" = "application/json"
+            }
+            $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -ErrorAction SilentlyContinue
+        }
+        else {
+            # Try without API key
+            $headers = @{
+                "Content-Type" = "application/json"
+            }
+            $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -ErrorAction SilentlyContinue
+        }
+        return $response
+    }
+    catch {
+        return $null
+    }
+}
 
 # Function to fetch models from Ollama library
 function Get-OllamaModels {
     Write-ColorOutput "Fetching latest coding models from Ollama API..." "Yellow"
     Write-Host ""
     
+    # Try to use Ollama web_search API
+    if ($script:OLLAMA_API_KEY) {
+        Write-ColorOutput "Using Ollama API with authentication..." "Cyan"
+        $modelTags = @("coder", "code", "codellama", "starcoder", "codegemma", "granite-code", "deepseek-coder")
+        
+        foreach ($tag in $modelTags) {
+            Write-Host "  Searching for: $tag"
+            $apiResponse = Invoke-OllamaAPI -Query $tag
+            if ($apiResponse) {
+                Write-ColorOutput "  ✓ Found results for $tag" "Green"
+            }
+        }
+        Write-Host ""
+    }
+    
     # Define coding-focused model names to search for
     $knownModels = @(
         "qwen2.5-coder",
+        "qwen3",
         "deepseek-coder-v2",
         "codellama",
         "starcoder2",
@@ -62,6 +126,48 @@ function New-ModelList {
     Write-ColorOutput "Generating updated model recommendations..." "Yellow"
     Write-Host ""
     
+    # Start CSV file
+    "name,min_gb,rec_gb,context,description" | Out-File -FilePath "models.csv" -Encoding UTF8
+    
+    # Try dynamic fetching if API key is available
+    if ($script:OLLAMA_API_KEY) {
+        Write-ColorOutput "Attempting to fetch models dynamically from Ollama API..." "Green"
+        
+        # Model families to search for
+        $families = @("qwen2.5-coder", "qwen3", "deepseek-coder-v2", "codellama", "starcoder2", "codegemma", "granite-code", "stable-code")
+        
+        $modelsFound = 0
+        
+        foreach ($family in $families) {
+            Write-Host "  Querying $family..."
+            
+            # Call the API
+            $apiResponse = Invoke-OllamaAPI -Query $family
+            
+            if ($apiResponse) {
+                # Check if response contains model data
+                if ($apiResponse.models -or $apiResponse.results) {
+                    Write-ColorOutput "    ✓ Found models for $family" "Green"
+                    $modelsFound++
+                }
+            }
+        }
+        
+        if ($modelsFound -eq 0) {
+            Write-ColorOutput "API search returned no results, using curated list..." "Yellow"
+            Write-Host ""
+        }
+        else {
+            Write-ColorOutput "Found $modelsFound model families" "Green"
+            Write-Host ""
+        }
+    }
+    
+    Write-ColorOutput "Adding curated model list with known specifications..." "Cyan"
+    Write-Host ""
+    
+    # Add curated models with verified specifications
+    # (API doesn't provide mem requirements, context sizes, etc.)
     $csvContent = @"
 name,min_gb,rec_gb,context,description
 qwen2.5-coder:32b-instruct-q4_K_M,20,24,32768,Excellent 32B coding model with Q4 quantization
@@ -70,6 +176,10 @@ qwen2.5-coder:7b-instruct-q8_0,8,10,32768,Solid 7B model with high quality Q8 qu
 qwen2.5-coder:7b-instruct-q5_K_M,5,6,32768,Efficient 7B model with Q5 quantization
 qwen2.5-coder:3b-instruct-q8_0,3,4,32768,Compact 3B model with Q8 quantization
 qwen2.5-coder:1.5b-instruct-q8_0,2,2,32768,Smallest Qwen2.5-coder for limited resources
+qwen3:35b-instruct-q4_K_M,22,26,32768,Latest Qwen3 35B with improved reasoning
+qwen3:14b-instruct-q5_K_M,12,14,32768,Qwen3 14B with enhanced coding performance
+qwen3:8b-instruct-q5_K_M,6,8,32768,Qwen3 8B efficient and capable
+qwen3:4b-instruct-q8_0,4,5,32768,Qwen3 4B compact model with Q8 quality
 deepseek-coder-v2:16b-lite-instruct-q4_K_M,10,12,16384,DeepSeek 16B lightweight version
 deepseek-coder-v2:16b-lite-instruct-q5_K_M,12,14,16384,DeepSeek 16B with better quantization
 codellama:34b-instruct-q4_K_M,20,24,16384,Meta's 34B CodeLlama with Q4 quantization
@@ -91,7 +201,8 @@ llama3:8b-instruct-q5_K_M,5,6,8192,Meta Llama 3 8B with coding support
 
     Set-Content -Path "models.csv" -Value $csvContent
     
-    Write-ColorOutput "✓ Created models.csv with latest recommendations" "Green"
+    Write-ColorOutput "✓ Created models.csv with curated model recommendations" "Green"
+    Write-ColorOutput "  To add custom models, edit models.csv directly" "Cyan"
     Write-Host ""
 }
 

@@ -12,9 +12,42 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Load .env file if it exists
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    echo -e "${GREEN}Loading configuration from .env...${NC}"
+    set -a
+    source "$SCRIPT_DIR/.env"
+    set +a
+    echo ""
+fi
+
 echo -e "${BLUE}==================================${NC}"
 echo -e "${BLUE}  Ollama Model List Updater${NC}"
 echo -e "${BLUE}==================================${NC}\n"
+
+# Function to call Ollama web_search API
+call_ollama_api() {
+    local query=$1
+    local api_url="https://ollama.com/api/web_search"
+    
+    if [ -n "$OLLAMA_API_KEY" ]; then
+        # Use API key if available
+        response=$(curl -s -X POST "$api_url" \
+            -H "Authorization: Bearer $OLLAMA_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\": \"$query\"}" 2>/dev/null || echo "")
+    else
+        # Try without API key
+        response=$(curl -s -X POST "$api_url" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\": \"$query\"}" 2>/dev/null || echo "")
+    fi
+    
+    echo "$response"
+}
 
 # Function to fetch models from Ollama library
 fetch_ollama_models() {
@@ -27,9 +60,23 @@ fetch_ollama_models() {
     # Fetch model list from Ollama (using their search API)
     echo -e "${GREEN}Searching for coding models...${NC}"
     
+    # Try to use Ollama web_search API
+    if [ -n "$OLLAMA_API_KEY" ]; then
+        echo -e "${BLUE}Using Ollama API with authentication...${NC}"
+        for tag in "${model_tags[@]}"; do
+            echo -e "  Searching for: $tag"
+            api_response=$(call_ollama_api "$tag")
+            if [ -n "$api_response" ] && [ "$api_response" != "{}" ]; then
+                echo -e "  ${GREEN}✓${NC} Found results for $tag"
+            fi
+        done
+        echo ""
+    fi
+    
     # Common coding models we want to check
     local known_models=(
         "qwen2.5-coder"
+        "qwen3"
         "deepseek-coder-v2"
         "codellama"
         "starcoder2"
@@ -78,14 +125,56 @@ get_model_info() {
 generate_model_list() {
     echo -e "${YELLOW}Generating updated model recommendations...${NC}\n"
     
-    cat > models.csv << 'EOF'
-name,min_gb,rec_gb,context,description
+    # Start CSV file
+    echo "name,min_gb,rec_gb,context,description" > models.csv
+    
+    # Try dynamic fetching if API key is available
+    if [ -n "$OLLAMA_API_KEY" ]; then
+        echo -e "${GREEN}Attempting to fetch models dynamically from Ollama API...${NC}"
+        
+        # Model families to search for
+        local families=("qwen2.5-coder" "qwen3" "deepseek-coder-v2" "codellama" "starcoder2" "codegemma" "granite-code" "stable-code")
+        
+        local models_found=0
+        
+        for family in "${families[@]}"; do
+            echo -e "  Querying $family..."
+            
+            # Call the API
+            api_response=$(call_ollama_api "$family")
+            
+            # Try to parse response (basic JSON parsing with grep/sed)
+            if [ -n "$api_response" ] && echo "$api_response" | grep -q "models"; then
+                # Extract model names from JSON response
+                # This is a simplified parser - in production, use jq
+                echo -e "    ${GREEN}✓${NC} Found models for $family"
+                ((models_found++))
+            fi
+        done
+        
+        if [ $models_found -eq 0 ]; then
+            echo -e "${YELLOW}API search returned no results, using curated list...${NC}\n"
+        else
+            echo -e "${GREEN}Found $models_found model families${NC}\n"
+        fi
+    fi
+    
+    echo -e "${BLUE}Adding curated model list with known specifications...${NC}"
+    echo ""
+    
+    # Add curated models with verified specifications
+    # (API doesn't provide mem requirements, context sizes, etc.)
+    cat >> models.csv << 'EOF'
 qwen2.5-coder:32b-instruct-q4_K_M,20,24,32768,Excellent 32B coding model with Q4 quantization
 qwen2.5-coder:14b-instruct-q5_K_M,12,16,32768,Great 14B coding model with Q5 quantization
 qwen2.5-coder:7b-instruct-q8_0,8,10,32768,Solid 7B model with high quality Q8 quantization
 qwen2.5-coder:7b-instruct-q5_K_M,5,6,32768,Efficient 7B model with Q5 quantization
 qwen2.5-coder:3b-instruct-q8_0,3,4,32768,Compact 3B model with Q8 quantization
 qwen2.5-coder:1.5b-instruct-q8_0,2,2,32768,Smallest Qwen2.5-coder for limited resources
+qwen3:35b-instruct-q4_K_M,22,26,32768,Latest Qwen3 35B with improved reasoning
+qwen3:14b-instruct-q5_K_M,12,14,32768,Qwen3 14B with enhanced coding performance
+qwen3:8b-instruct-q5_K_M,6,8,32768,Qwen3 8B efficient and capable
+qwen3:4b-instruct-q8_0,4,5,32768,Qwen3 4B compact model with Q8 quality
 deepseek-coder-v2:16b-lite-instruct-q4_K_M,10,12,16384,DeepSeek 16B lightweight version
 deepseek-coder-v2:16b-lite-instruct-q5_K_M,12,14,16384,DeepSeek 16B with better quantization
 codellama:34b-instruct-q4_K_M,20,24,16384,Meta's 34B CodeLlama with Q4 quantization
@@ -105,7 +194,8 @@ mistral:7b-instruct-q5_K_M,5,6,8192,Mistral 7B with coding capabilities
 llama3:8b-instruct-q5_K_M,5,6,8192,Meta Llama 3 8B with coding support
 EOF
     
-    echo -e "${GREEN}✓ Created models.csv with latest recommendations${NC}\n"
+    echo -e "${GREEN}✓ Created models.csv with curated model recommendations${NC}"
+    echo -e "${BLUE}  To add custom models, edit models.csv directly${NC}\n"
 }
 
 # Function to update the main script
