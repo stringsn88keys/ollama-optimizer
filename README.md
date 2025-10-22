@@ -17,7 +17,7 @@ Running large language models locally requires careful balancing of model capabi
 
 ```bash
 # Download the script
-curl -O https://raw.githubusercontent.com/yourusername/ollama-optimizer/main/ollama_optimizer.sh
+curl -O https://raw.githubusercontent.com/stringsn88keys/ollama-optimizer/main/ollama_optimizer.sh
 
 # Make it executable
 chmod +x ollama_optimizer.sh
@@ -30,7 +30,7 @@ chmod +x ollama_optimizer.sh
 
 ```powershell
 # Download the script (or save it manually as ollama_optimizer.ps1)
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/yourusername/ollama-optimizer/main/ollama_optimizer.ps1" -OutFile "ollama_optimizer.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/stringsn88keys/ollama-optimizer/main/ollama_optimizer.ps1" -OutFile "ollama_optimizer.ps1"
 
 # Enable PowerShell script execution (if needed)
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
