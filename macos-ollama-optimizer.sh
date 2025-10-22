@@ -382,21 +382,34 @@ install_recommended_model() {
     done < <(get_installed_models)
     installed_recommended=()
 
-    # Load models from CSV file
+    # Load models from CSV file or use fallback
     declare -a recommended_models=()
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
     if [ -f "$SCRIPT_DIR/models.csv" ]; then
+        echo -e "${GREEN}Loading models from models.csv...${NC}"
         # Read CSV file, skip header line
         while IFS=',' read -r name min_gb rec_gb context desc; do
-            # Skip header line
-            if [[ "$name" != "Name" ]]; then
+            # Skip header line and empty lines
+            if [[ "$name" != "name" && -n "$name" ]]; then
                 recommended_models+=("$name,$min_gb,$rec_gb,$context,$desc")
             fi
         done < "$SCRIPT_DIR/models.csv"
+    elif [ -f "$SCRIPT_DIR/fallback_models.csv" ]; then
+        # Fallback to fallback model list
+        echo -e "${YELLOW}Loading fallback models (run ./refresh-models.sh to get latest)${NC}"
+        while IFS=',' read -r name min_gb rec_gb context desc; do
+            # Skip header line and empty lines
+            if [[ "$name" != "name" && -n "$name" ]]; then
+                recommended_models+=("$name,$min_gb,$rec_gb,$context,$desc")
+            fi
+        done < "$SCRIPT_DIR/fallback_models.csv"
     else
-        echo -e "${RED}Error: models.csv file not found!${NC}"
+        echo -e "${RED}Error: No model files found (models.csv or fallback_models.csv)${NC}"
+        echo "Run ./refresh-models.sh to generate models.csv"
         return 1
     fi
+    echo ""
 
     declare -a possible_models=()
 

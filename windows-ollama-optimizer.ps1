@@ -180,7 +180,22 @@ function Get-ModelRecommendations {
     Write-ColorOutput "Recommended Models for Coding:" "Green"
     Write-Host ""
     
-    $models = Import-Csv -Path ".\models.csv"
+    # Load models from CSV file or fallback
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    if (Test-Path ".\models.csv") {
+        Write-ColorOutput "Loading models from models.csv..." "Green"
+        $models = Import-Csv -Path ".\models.csv"
+    }
+    elseif (Test-Path ".\fallback_models.csv") {
+        Write-ColorOutput "Loading fallback models (run .\refresh-models.ps1 to get latest)" "Yellow"
+        $models = Import-Csv -Path ".\fallback_models.csv"
+    }
+    else {
+        Write-ColorOutput "Error: No model files found (models.csv or fallback_models.csv)" "Red"
+        Write-Host "Run .\refresh-models.ps1 to generate models.csv"
+        return
+    }
+    Write-Host ""
     
     # Initialize script-level arrays to store models
     $script:recommendedModels = @()

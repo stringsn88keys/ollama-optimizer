@@ -1,0 +1,14 @@
+name,min_gb,rec_gb,context,description
+qwen2.5-coder:32b-instruct-q4_K_M,20,24,32768,Excellent 32B coding model with Q4 quantization
+qwen2.5-coder:14b-instruct-q5_K_M,12,16,32768,Great 14B coding model with Q5 quantization
+qwen2.5-coder:7b-instruct-q8_0,8,10,32768,Solid 7B model with high quality Q8 quantization
+qwen2.5-coder:7b-instruct-q5_K_M,5,6,32768,Efficient 7B model with Q5 quantization
+deepseek-coder-v2:16b-lite-instruct-q4_K_M,10,12,16384,DeepSeek 16B lightweight version
+codellama:34b-instruct-q4_K_M,20,24,16384,Meta's 34B CodeLlama with Q4 quantization
+codellama:13b-instruct-q5_K_M,10,12,16384,Meta's 13B CodeLlama with Q5 quantization
+codellama:7b-instruct-q8_0,8,10,16384,Meta's 7B CodeLlama with high quality
+starcoder2:15b-q4_K_M,10,12,16384,StarCoder2 15B for code completion
+starcoder2:7b-q5_K_M,5,6,16384,StarCoder2 7B efficient version
+codegemma:7b-instruct-q5_K_M,5,6,8192,Google's CodeGemma 7B
+granite-code:8b-instruct-q4_K_M,5,6,8192,IBM Granite Code 8B
+stable-code:3b-q8_0,3,4,16384,Stability AI's compact 3B model
